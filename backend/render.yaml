@@ -1,0 +1,44 @@
+# render.yaml
+# Infraestructura como Código (IaC) para Render
+# Esto automatizará la creación de tu base de datos y tus dos servicios (Front y Back)
+
+services:
+  # ====================================
+  # SERVICIO 1: Backend de FastAPI
+  # ====================================
+  - type: web
+    name: fondoia-backend
+    env: docker
+    dockerfilePath: ./Dockerfile.backend
+    region: frankfurt # Elige la región más cercana a tus usuarios (ej. oregon, frankfurt, singapore)
+    plan: starter # Starter ($7/mes) o Standard ($25/mes) recomendado para tener RAM suficiente para la IA/RAG
+    healthCheckPath: /
+    
+    # Montamos un disco persistente para ChromaDB
+    # Esto evitará que la base de datos de PDF se pierda en cada reinicio
+    disk:
+      name: chroma-data
+      mountPath: /app/chroma_db
+      sizeGB: 5 # 5GB es más que suficiente para miles de normativas en texto
+      
+    envVars:
+      # Definimos que la API KEY vendrá del panel web, NO del código
+      - key: GEMINI_API_KEY
+        sync: false # Falso significa que la rellenarás en el dashboard de Render por seguridad
+
+  # ====================================
+  # SERVICIO 2: Frontend de Streamlit
+  # ====================================
+  - type: web
+    name: fondoia-frontend
+    env: docker
+    dockerfilePath: ./Dockerfile.frontend
+    region: frankfurt
+    plan: starter
+    
+    envVars:
+      # Sobrescribimos la variable de conexión al backend en el código de Streamlit.
+      # Render asigna dominios .onrender.com automáticamente.
+      # Deberás cambiar 'fondoia-backend' por la URL real una vez que Render levante el backend.
+      - key: API_URL_BASE
+        value: https://fondoia-backend.onrender.com

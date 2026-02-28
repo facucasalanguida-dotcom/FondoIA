@@ -1,0 +1,34 @@
+# ==================================
+# Dockerfile para el Backend (FastAPI)
+# ==================================
+FROM python:3.11-slim
+
+# Evita que Python escriba archivos .pyc en disco y asegura 
+# que la salida de la consola no pase por un buffer (útil para logs)
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# Definimos el directorio de trabajo dentro del contenedor
+WORKDIR /app
+
+# Instalamos dependencias del sistema necesarias
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiamos primero los requirements para cachear esta capa en Docker
+COPY requirements.txt .
+
+# Instalamos las dependencias de Python
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copiamos todo el código fuente del backend a /app
+COPY . .
+
+# Exponemos el puerto que usará FastAPI
+EXPOSE 8000
+
+# Comando para iniciar la aplicación usando Gunicorn con workers de Uvicorn (Apto para Producción)
+# -w 4 significa 4 procesos paralelos.
+CMD ["gunicorn", "app.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
